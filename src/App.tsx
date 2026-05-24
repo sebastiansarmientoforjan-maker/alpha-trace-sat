@@ -90,6 +90,10 @@ export default function App() {
           from { opacity: 0; transform: translateX(-50%) translateY(12px); }
           to   { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(20px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
         @keyframes fadeIn {
           from { opacity: 0; }
           to   { opacity: 1; }

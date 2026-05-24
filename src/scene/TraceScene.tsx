@@ -2,8 +2,7 @@ import { Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { WorldObject } from './WorldObject'
 import { CameraRig } from './CameraRig'
-import type { CameraState, WorldId } from '../types/world'
-import type { World } from '../types/world'
+import type { CameraState, WorldId, World } from '../types/world'
 
 interface TraceSceneProps {
   worlds: World[]
@@ -32,28 +31,30 @@ export function TraceScene({
 
   return (
     <>
-      {/* Ambient + directional lighting */}
-      <ambientLight intensity={0.08} />
-      <directionalLight position={[10, 10, 5]} intensity={0.4} color="#e2e8f0" />
-      <directionalLight position={[-8, -4, -6]} intensity={0.15} color="#1e293b" />
+      {/* Scene ambient — kept very low so emissive worlds stand out */}
+      <ambientLight intensity={0.05} />
 
-      {/* Subtle point lights for scene atmosphere */}
-      <pointLight position={[0, 8, 0]} intensity={0.3} color="#0D9488" distance={20} decay={2} />
-      <pointLight position={[-10, 0, -5]} intensity={0.2} color="#10B981" distance={15} decay={2} />
+      {/* Key light — cold, slightly above */}
+      <directionalLight position={[8, 12, 6]} intensity={0.35} color="#c7d2fe" />
+      {/* Fill light — warm and dim from below, creates subtle ground separation */}
+      <directionalLight position={[-6, -3, -8]} intensity={0.1} color="#1e1b4b" />
 
-      {/* Deep space stars */}
+      {/* Gauntlet backlight — always present, platinum-cold, draws the eye */}
+      <pointLight position={[0, 4, -10]} intensity={0.8} color="#e2e8f0" distance={22} decay={2} />
+
+      {/* Stars — sparse, desaturated, stay in background */}
       <Stars
-        radius={80}
-        depth={60}
-        count={2500}
-        factor={3}
+        radius={90}
+        depth={70}
+        count={2000}
+        factor={2.5}
         saturation={0}
         fade
-        speed={0.3}
+        speed={0.2}
       />
 
-      {/* Scene fog — creates depth and occludes locked worlds */}
-      <fog attach="fog" args={['#0e0f11', 18, 45]} />
+      {/* Fog — near plane at 22 prevents worlds from popping in; far plane at 50 occludes the back */}
+      <fog attach="fog" args={['#0a0b0d', 22, 50]} />
 
       {/* World objects */}
       {worlds.map((world) => (
@@ -68,18 +69,17 @@ export function TraceScene({
         />
       ))}
 
-      {/* Camera choreography */}
       <CameraRig cameraState={cameraState} worlds={worlds} />
 
-      {/* Post-processing */}
+      {/* Post-processing — bloom only on what's already bright, vignette pulls attention inward */}
       <EffectComposer>
         <Bloom
-          luminanceThreshold={0.3}
-          luminanceSmoothing={0.6}
-          intensity={1.2}
+          luminanceThreshold={0.25}
+          luminanceSmoothing={0.5}
+          intensity={1.6}
           mipmapBlur
         />
-        <Vignette eskil={false} offset={0.15} darkness={0.7} />
+        <Vignette eskil={false} offset={0.12} darkness={0.75} />
       </EffectComposer>
     </>
   )
