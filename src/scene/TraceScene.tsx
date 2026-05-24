@@ -1,5 +1,8 @@
+import { useRef } from 'react'
 import { Stars } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import * as THREE from 'three'
 import { WorldObject } from './WorldObject'
 import { CameraRig } from './CameraRig'
 import { AtlasConnections } from './AtlasConnections'
@@ -11,6 +14,20 @@ interface TraceSceneProps {
   onHoverWorld: (id: WorldId) => void
   onUnhoverWorld: () => void
   onFocusWorld: (id: WorldId) => void
+}
+
+// ~6°/min Y-rotation on the parent group. Pauses on focus/enter so the camera
+// can hold still on a sector without the world drifting out of frame.
+function DriftingConstellation({ children, paused }: {
+  children: React.ReactNode
+  paused: boolean
+}) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((_, delta) => {
+    if (!ref.current || paused) return
+    ref.current.rotation.y += delta * 0.00028 * 60  // ~6°/min
+  })
+  return <group ref={ref}>{children}</group>
 }
 
 export function TraceScene({
@@ -26,9 +43,11 @@ export function TraceScene({
       : null
 
   const focusedId =
-    cameraState.type === 'focus'
-      ? (cameraState as { type: 'focus'; worldId: WorldId }).worldId
+    cameraState.type === 'focus' || cameraState.type === 'enter'
+      ? (cameraState as { type: 'focus' | 'enter'; worldId: WorldId }).worldId
       : null
+
+  const driftPaused = cameraState.type === 'focus' || cameraState.type === 'enter'
 
   return (
     <>
@@ -41,7 +60,7 @@ export function TraceScene({
       <directionalLight position={[-6, -3, -8]} intensity={0.1} color="#1e1b4b" />
 
       {/* Gauntlet backlight — always present, platinum-cold, draws the eye */}
-      <pointLight position={[0, 4, -10]} intensity={0.8} color="#e2e8f0" distance={22} decay={2} />
+      <pointLight position={[0, 4, -10]} intensity={0.85} color="#e2e8f0" distance={22} decay={2} />
 
       {/* Stars — sparse, desaturated, stay in background */}
       <Stars
@@ -54,24 +73,24 @@ export function TraceScene({
         speed={0.2}
       />
 
-      {/* Fog — near plane at 22 prevents worlds from popping in; far plane at 50 occludes the back */}
-      <fog attach="fog" args={['#0a0b0d', 22, 50]} />
+      {/* Fog — tightened: near 22→18, far 50→38. Gauntlet sits on the fog edge. */}
+      <fog attach="fog" args={['#0a0b0d', 18, 38]} />
 
-      {/* Atlas connection arcs — subtle paths converging toward The Gauntlet */}
-      <AtlasConnections worlds={worlds} />
-
-      {/* World objects */}
-      {worlds.map((world) => (
-        <WorldObject
-          key={world.id}
-          world={world}
-          isHovered={hoveredId === world.id}
-          isFocused={focusedId === world.id}
-          onHover={onHoverWorld}
-          onUnhover={onUnhoverWorld}
-          onFocus={onFocusWorld}
-        />
-      ))}
+      {/* Worlds + arcs rotate together as a constellation. Camera stays fixed. */}
+      <DriftingConstellation paused={driftPaused}>
+        <AtlasConnections worlds={worlds} />
+        {worlds.map((world) => (
+          <WorldObject
+            key={world.id}
+            world={world}
+            isHovered={hoveredId === world.id}
+            isFocused={focusedId === world.id}
+            onHover={onHoverWorld}
+            onUnhover={onUnhoverWorld}
+            onFocus={onFocusWorld}
+          />
+        ))}
+      </DriftingConstellation>
 
       <CameraRig cameraState={cameraState} worlds={worlds} />
 
