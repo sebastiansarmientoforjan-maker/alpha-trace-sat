@@ -2,6 +2,7 @@ import { Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import { WorldObject } from './WorldObject'
 import { CameraRig } from './CameraRig'
+import { AtlasConnections } from './AtlasConnections'
 import type { CameraState, WorldId, World } from '../types/world'
 
 interface TraceSceneProps {
@@ -55,6 +56,9 @@ export function TraceScene({
 
       {/* Fog — near plane at 22 prevents worlds from popping in; far plane at 50 occludes the back */}
       <fog attach="fog" args={['#0a0b0d', 22, 50]} />
+
+      {/* Atlas connection arcs — subtle paths converging toward The Gauntlet */}
+      <AtlasConnections worlds={worlds} />
 
       {/* World objects */}
       {worlds.map((world) => (

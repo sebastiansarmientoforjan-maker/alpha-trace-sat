@@ -134,11 +134,13 @@ function RegressionCoreGeometry({ color, isHovered, isFocused, isLocked }: {
 }
 
 // ─── PARAMETER CONTROL ───────────────────────────────────────────────────────
-// Identity: three parallel rails with a sliding band — modulation frozen in space
+// Identity: three parallel rails with three sliders at different positions — modulation made spatial
 function ParameterControlGeometry({ color, isHovered, isFocused, isLocked }: {
   color: string; isHovered: boolean; isFocused: boolean; isLocked: boolean
 }) {
-  const sliderRef = useRef<THREE.Mesh>(null)
+  const slider1 = useRef<THREE.Mesh>(null)
+  const slider2 = useRef<THREE.Mesh>(null)
+  const slider3 = useRef<THREE.Mesh>(null)
   const groupRef = useRef<THREE.Group>(null)
 
   useFrame((state, delta) => {
@@ -146,46 +148,73 @@ function ParameterControlGeometry({ color, isHovered, isFocused, isLocked }: {
       const s = isLocked ? 0.001 : 0.003
       groupRef.current.rotation.y += delta * s * 60
     }
-    if (sliderRef.current && !isLocked) {
-      sliderRef.current.position.x = Math.sin(state.clock.elapsedTime * 0.6) * 0.55
+    if (!isLocked) {
+      const t = state.clock.elapsedTime
+      if (slider1.current) slider1.current.position.x = Math.sin(t * 0.7) * 0.9
+      if (slider2.current) slider2.current.position.x = Math.sin(t * 0.5 + 1.2) * 0.9
+      if (slider3.current) slider3.current.position.x = Math.sin(t * 0.9 + 2.4) * 0.9
     }
   })
 
   const railColor = isLocked ? '#1F2937' : color
-  const railEmissive = isLocked ? 0.05 : isFocused ? 1.8 : isHovered ? 1.1 : 0.5
+  const railRadius = isLocked ? 0.018 : 0.026
+  const railEmissive = isLocked ? 0.2 : isFocused ? 1.8 : isHovered ? 1.1 : 0.55
+  const railOpacity = isLocked ? 0.45 : 1
+  const RAIL_LENGTH = 2.6
+  const sliders = [slider1, slider2, slider3]
+  const railYPositions = [-0.6, 0, 0.6]
 
   return (
-    <group ref={groupRef} rotation={[0.3, 0, 0]}>
-      {/* Three rails */}
-      {[-0.55, 0, 0.55].map((y, i) => (
-        <mesh key={i} position={[0, y, 0]}>
-          <cylinderGeometry args={[0.012, 0.012, 2.2, 8]} rotation={[0, 0, Math.PI / 2]} />
+    <group ref={groupRef} rotation={[0.25, 0, 0]}>
+      {/* Three rails — thicker and longer */}
+      {railYPositions.map((y, i) => (
+        <mesh key={i} position={[0, y, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[railRadius, railRadius, RAIL_LENGTH, 8]} />
           <meshStandardMaterial
             color={railColor}
             emissive={railColor}
-            emissiveIntensity={railEmissive * (i === 1 ? 1 : 0.5)}
-            transparent opacity={isLocked ? 0.3 : 1}
+            emissiveIntensity={railEmissive * (i === 1 ? 1 : 0.6)}
+            metalness={0.7}
+            roughness={0.3}
+            transparent opacity={railOpacity}
           />
         </mesh>
       ))}
-      {/* Sliding indicator — middle rail */}
-      {!isLocked && (
-        <mesh ref={sliderRef} position={[0, 0, 0.05]}>
-          <boxGeometry args={[0.12, 0.38, 0.08]} />
+
+      {/* End caps — structural brackets */}
+      {[-RAIL_LENGTH / 2, RAIL_LENGTH / 2].map((x, i) => (
+        <mesh key={i} position={[x, 0, 0]}>
+          <boxGeometry args={[0.06, 1.45, 0.12]} />
+          <meshStandardMaterial
+            color={railColor}
+            emissive={railColor}
+            emissiveIntensity={railEmissive * 0.5}
+            metalness={0.8}
+            roughness={0.2}
+            transparent opacity={railOpacity}
+          />
+        </mesh>
+      ))}
+
+      {/* Three sliders — each on its own rail, phased apart */}
+      {!isLocked && railYPositions.map((y, i) => (
+        <mesh key={i} ref={sliders[i]} position={[0, y, 0.06]}>
+          <boxGeometry args={[0.16, 0.28, 0.12]} />
           <meshStandardMaterial
             color={color}
             emissive={color}
-            emissiveIntensity={isFocused ? 3 : isHovered ? 2 : 1.2}
-            metalness={0.8}
-            roughness={0.1}
+            emissiveIntensity={isFocused ? 3.5 : isHovered ? 2.2 : 1.4}
+            metalness={0.9}
+            roughness={0.05}
           />
         </mesh>
-      )}
-      {/* Rail end caps */}
-      {!isLocked && [-1.1, 1.1].map((x, i) => (
-        <mesh key={i} position={[x, 0, 0]}>
-          <boxGeometry args={[0.06, 1.4, 0.06]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+      ))}
+
+      {/* Locked: ghost slider positions as flat marks */}
+      {isLocked && railYPositions.map((y, i) => (
+        <mesh key={i} position={[(i - 1) * 0.45, y, 0.04]}>
+          <boxGeometry args={[0.1, 0.2, 0.04]} />
+          <meshStandardMaterial color={railColor} emissive={railColor} emissiveIntensity={0.15} transparent opacity={0.3} />
         </mesh>
       ))}
     </group>
@@ -208,9 +237,9 @@ function GeometrySectorGeometry({ color, isHovered, isFocused, isLocked }: {
     if (ring3.current) ring3.current.rotation.y += delta * s * 30
   })
 
-  const ringEmissive = isLocked ? 0 : isFocused ? 2.5 : isHovered ? 1.6 : 0.8
+  const ringEmissive = isLocked ? 0.25 : isFocused ? 2.5 : isHovered ? 1.6 : 0.8
   const ringColor = isLocked ? '#374151' : color
-  const ringOpacity = isLocked ? 0.2 : 1
+  const ringOpacity = isLocked ? 0.5 : 1
 
   return (
     <group>
@@ -241,77 +270,125 @@ function GeometrySectorGeometry({ color, isHovered, isFocused, isLocked }: {
 }
 
 // ─── THE GAUNTLET ─────────────────────────────────────────────────────────────
-// Identity: a sealed monolith — four converging arcs pointing inward, heavy and inaccessible
+// Identity: a monumental sealed vault — heavy outer ring, eight pillars, inner seal, octahedron core
+// Reads as "destination" from across the scene — dark but structurally resolved
 function GauntletGeometry({ color, isHovered, isFocused, isLocked }: {
   color: string; isHovered: boolean; isFocused: boolean; isLocked: boolean
 }) {
   const coreRef = useRef<THREE.Mesh>(null)
-  const gateRef = useRef<THREE.Group>(null)
+  const innerRingRef = useRef<THREE.Mesh>(null)
+  const outerRingRef = useRef<THREE.Mesh>(null)
 
   useFrame((state, delta) => {
     if (coreRef.current) {
-      coreRef.current.rotation.y += delta * 0.008 * 60
-      coreRef.current.rotation.x += delta * 0.003 * 60
+      coreRef.current.rotation.y += delta * 0.006 * 60
+      coreRef.current.rotation.x += delta * 0.002 * 60
     }
-    if (gateRef.current && !isLocked) {
-      gateRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.08
+    if (innerRingRef.current) {
+      innerRingRef.current.rotation.z += delta * 0.004 * 60
+    }
+    if (outerRingRef.current) {
+      outerRingRef.current.rotation.z -= delta * 0.002 * 60
     }
   })
 
-  const lockedCoreEmissive = isHovered ? 0.3 : 0.08
-  const unlockedEmissive = isFocused ? 2.5 : isHovered ? 1.8 : 1.0
+  // Locked: warm near-black. Unlocked: gold.
+  const lockedDark = '#1C1917'
+  const lockedMid = '#292524'
+  const lockedLight = '#3D3530'
+  const coreEmissive = isLocked ? (isHovered ? 0.35 : 0.1) : (isFocused ? 2.8 : isHovered ? 1.8 : 1.0)
+  const structureEmissive = isLocked ? (isHovered ? 0.25 : 0.12) : (isFocused ? 2.2 : isHovered ? 1.4 : 0.7)
+  const ringEmissive = isLocked ? (isHovered ? 0.3 : 0.15) : (isFocused ? 2.5 : isHovered ? 1.6 : 0.8)
+
+  const PILLAR_RADIUS = 1.6
+  const NUM_PILLARS = 8
 
   return (
     <group>
-      {/* Central octahedron */}
-      <mesh ref={coreRef}>
-        <octahedronGeometry args={[0.55, 0]} />
+      {/* Outer structural ring — the main silhouette mass */}
+      <mesh ref={outerRingRef} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.7, isLocked ? 0.055 : 0.048, 12, 80]} />
         <meshStandardMaterial
-          color={isLocked ? '#292524' : color}
-          emissive={isLocked ? '#1C1917' : color}
-          emissiveIntensity={isLocked ? lockedCoreEmissive : unlockedEmissive}
-          roughness={isLocked ? 0.8 : 0.1}
-          metalness={isLocked ? 0.3 : 0.95}
+          color={isLocked ? lockedLight : color}
+          emissive={isLocked ? lockedLight : color}
+          emissiveIntensity={ringEmissive * 0.9}
+          metalness={0.95}
+          roughness={isLocked ? 0.6 : 0.05}
         />
       </mesh>
 
-      {/* Four converging gate pillars */}
-      <group ref={gateRef}>
-        {[0, 1, 2, 3].map((i) => {
-          const angle = (i / 4) * Math.PI * 2
-          const x = Math.cos(angle) * 1.2
-          const z = Math.sin(angle) * 1.2
-          return (
-            <mesh key={i} position={[x, 0, z]} rotation={[0, -angle, 0]}>
-              <boxGeometry args={[0.06, isLocked ? 1.8 : 1.4, 0.06]} />
-              <meshStandardMaterial
-                color={isLocked ? '#292524' : color}
-                emissive={isLocked ? '#1C1917' : color}
-                emissiveIntensity={isLocked ? 0.15 : isFocused ? 2 : 0.8}
-                metalness={0.9}
-                roughness={0.1}
-              />
-            </mesh>
-          )
-        })}
-        {/* Top bar connecting the four pillars — the seal */}
-        <mesh position={[0, isLocked ? 0.9 : 0.7, 0]} rotation={[0, 0, 0]}>
-          <torusGeometry args={[1.2, 0.025, 8, 40]} />
-          <meshStandardMaterial
-            color={isLocked ? '#44403C' : color}
-            emissive={isLocked ? '#292524' : color}
-            emissiveIntensity={isLocked ? 0.2 : isFocused ? 2.5 : 1.2}
-            metalness={0.95}
-            roughness={0.05}
-          />
-        </mesh>
-      </group>
+      {/* Eight pillars at the outer ring radius — the vault structure */}
+      {Array.from({ length: NUM_PILLARS }).map((_, i) => {
+        const angle = (i / NUM_PILLARS) * Math.PI * 2
+        const x = Math.cos(angle) * PILLAR_RADIUS
+        const z = Math.sin(angle) * PILLAR_RADIUS
+        return (
+          <mesh key={i} position={[x, 0, z]}>
+            <boxGeometry args={[0.1, 1.6, 0.1]} />
+            <meshStandardMaterial
+              color={isLocked ? lockedMid : color}
+              emissive={isLocked ? lockedDark : color}
+              emissiveIntensity={structureEmissive}
+              metalness={0.9}
+              roughness={isLocked ? 0.7 : 0.1}
+            />
+          </mesh>
+        )
+      })}
 
-      {/* Lock indicator — pulsing when locked and hovered */}
+      {/* Inner seal ring — counter-rotates, implies a lock mechanism */}
+      <mesh ref={innerRingRef} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.9, isLocked ? 0.03 : 0.025, 10, 60]} />
+        <meshStandardMaterial
+          color={isLocked ? lockedMid : color}
+          emissive={isLocked ? lockedMid : color}
+          emissiveIntensity={ringEmissive}
+          metalness={0.95}
+          roughness={isLocked ? 0.5 : 0.05}
+        />
+      </mesh>
+
+      {/* Top cap ring — seals the vault at the crown */}
+      <mesh position={[0, 0.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.6, 0.04, 8, 60]} />
+        <meshStandardMaterial
+          color={isLocked ? lockedLight : color}
+          emissive={isLocked ? lockedMid : color}
+          emissiveIntensity={structureEmissive * 0.8}
+          metalness={0.95}
+          roughness={0.1}
+        />
+      </mesh>
+
+      {/* Bottom cap ring */}
+      <mesh position={[0, -0.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.6, 0.04, 8, 60]} />
+        <meshStandardMaterial
+          color={isLocked ? lockedLight : color}
+          emissive={isLocked ? lockedMid : color}
+          emissiveIntensity={structureEmissive * 0.8}
+          metalness={0.95}
+          roughness={0.1}
+        />
+      </mesh>
+
+      {/* Central octahedron core */}
+      <mesh ref={coreRef}>
+        <octahedronGeometry args={[0.45, 0]} />
+        <meshStandardMaterial
+          color={isLocked ? lockedMid : color}
+          emissive={isLocked ? lockedDark : color}
+          emissiveIntensity={coreEmissive}
+          roughness={isLocked ? 0.85 : 0.05}
+          metalness={isLocked ? 0.4 : 0.98}
+        />
+      </mesh>
+
+      {/* Locked hover: amber reveal pulse */}
       {isLocked && isHovered && (
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[0.08, 8, 8]} />
-          <meshStandardMaterial color="#F59E0B" emissive="#F59E0B" emissiveIntensity={1.5} />
+        <mesh>
+          <sphereGeometry args={[0.12, 10, 10]} />
+          <meshStandardMaterial color="#F59E0B" emissive="#F59E0B" emissiveIntensity={2} transparent opacity={0.6} />
         </mesh>
       )}
     </group>
